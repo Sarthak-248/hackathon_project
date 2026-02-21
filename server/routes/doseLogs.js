@@ -103,10 +103,15 @@ router.post('/generate', auth, async (req, res) => {
     
     let created = 0;
     for (const medicine of medicines) {
-      for (const timeSlot of medicine.timeSlots || []) {
-        const [hours, minutes] = timeSlot.split(':').map(Number);
+      for (const slot of medicine.timeSlots || []) {
+        // timeSlots are objects: { time: "08:00", period: "AM" }
+        const [hours, minutes] = slot.time.split(':').map(Number);
+        let hours24 = hours;
+        if (slot.period === 'PM' && hours < 12) hours24 += 12;
+        else if (slot.period === 'AM' && hours === 12) hours24 = 0;
+
         const scheduledTime = new Date(today);
-        scheduledTime.setHours(hours, minutes, 0, 0);
+        scheduledTime.setHours(hours24, minutes, 0, 0);
 
         const exists = await DoseLog.findOne({
           userId: req.userId,
