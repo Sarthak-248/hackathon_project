@@ -31,6 +31,9 @@ export default function Layout({ children }) {
 
   const fetchNotifications = async (isInitial = false) => {
     try {
+      // Trigger smart notification generation first
+      await api.generateNotifications().catch(() => {});
+
       const notifs = await api.getNotifications();
       setNotifications(notifs);
       if (isInitial) {
