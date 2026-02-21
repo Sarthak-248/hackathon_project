@@ -65,11 +65,11 @@ router.post('/generate', auth, async (req, res) => {
   try {
     const userId = req.userId;
     const now = new Date();
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+    const todayStart = new Date(now.getTime() - 24 * 60 * 60 * 1000); // last 24 hours for dedup
+    const todayEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000); // next 24 hours
     const created = [];
 
-    // Helper: don't create duplicate notifs of same type+medicine today
+    // Helper: don't create duplicate notifs of same type+medicine in last 24h
     async function alreadyNotified(type, medicineId) {
       const q = { userId, type, createdAt: { $gte: todayStart } };
       if (medicineId) q.medicineId = medicineId;

@@ -72,15 +72,23 @@ router.get('/weekly-summary', auth, async (req, res) => {
     });
 
     // Daily breakdown
+    const timezoneOffset = parseInt(req.query.timezoneOffset) || 0;
+    const offsetMs = timezoneOffset * 60 * 1000;
     const daily = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      date.setHours(0, 0, 0, 0);
-      const nextDay = new Date(date.getTime() + 24 * 60 * 60 * 1000);
-      const dayLogs = logs.filter(l => l.scheduledTime >= date && l.scheduledTime < nextDay);
+      // Calculate user's local day boundaries
+      const localNow = new Date(now.getTime() - offsetMs);
+      const localDate = new Date(localNow.getTime() - i * 24 * 60 * 60 * 1000);
+      localDate.setUTCHours(0, 0, 0, 0);
+      // Convert back to UTC for DB comparison
+      const dayStartUTC = new Date(localDate.getTime() + offsetMs);
+      const dayEndUTC = new Date(dayStartUTC.getTime() + 24 * 60 * 60 * 1000);
+      const dayLogs = logs.filter(l => l.scheduledTime >= dayStartUTC && l.scheduledTime < dayEndUTC);
+      // Use the local date for display
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       daily.push({
-        date: date.toISOString().split('T')[0],
-        dayName: date.toLocaleDateString('en', { weekday: 'short' }),
+        date: localDate.toISOString().split('T')[0],
+        dayName: dayNames[localDate.getUTCDay()],
         total: dayLogs.length,
         taken: dayLogs.filter(l => l.taken).length,
         missed: dayLogs.filter(l => l.missed).length

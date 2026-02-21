@@ -20,14 +20,24 @@ try {
       }).populate('medicineId');
 
       for (const dose of missedDoses) {
-        await Notification.create({
+        // Check if a missed_dose notification for this specific dose already exists
+        const existing = await Notification.findOne({
           userId: dose.userId,
           type: 'missed_dose',
-          title: 'Missed Dose',
-          message: `You missed your ${dose.medicineId.name} dose scheduled for ${dose.scheduledTime.toLocaleTimeString()}.`,
-          severity: 'warning',
           medicineId: dose.medicineId._id,
+          createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         });
+
+        if (!existing) {
+          await Notification.create({
+            userId: dose.userId,
+            type: 'missed_dose',
+            title: 'Missed Dose',
+            message: `You missed your ${dose.medicineId.name} dose scheduled for ${dose.scheduledTime.toLocaleTimeString()}.`,
+            severity: 'warning',
+            medicineId: dose.medicineId._id,
+          });
+        }
       }
 
       // Mark doses as missed if scheduledTime is more than 30 min past and not taken

@@ -39,7 +39,7 @@ export const api = {
     return request('GET', `/dose-logs/today?start=${s.toISOString()}&end=${e.toISOString()}`);
   },
   markDoseTaken: (id) => request('PUT', `/dose-logs/${id}/take`),
-  getWeeklySummary: () => request('GET', '/dose-logs/weekly-summary'),
+  getWeeklySummary: () => request('GET', `/dose-logs/weekly-summary?timezoneOffset=${new Date().getTimezoneOffset()}`),
   generateLogs: () => request('POST', '/dose-logs/generate', { timezoneOffset: new Date().getTimezoneOffset() }),
 
   // Notifications
