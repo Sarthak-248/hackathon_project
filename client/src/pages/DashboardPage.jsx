@@ -82,9 +82,9 @@ export default function DashboardPage() {
 
   // Group logs by time period
   const groupedLogs = {
-    morning: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 4 && h < 12; }),
-    afternoon: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 12 && h < 17; }),
-    night: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 17 || h < 4; }),
+    morning: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getUTCHours(); return h >= 4 && h < 12; }),
+    afternoon: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getUTCHours(); return h >= 12 && h < 17; }),
+    night: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getUTCHours(); return h >= 17 || h < 4; }),
   };
 
   const renderSection = (title, logs) => {
