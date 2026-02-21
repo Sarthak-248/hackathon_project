@@ -107,27 +107,7 @@ router.post('/generate', auth, async (req, res) => {
       }
     }
 
-    // ── 2. OVERDUE / NOT TAKEN TODAY (past schedule time but not yet 30 min) ──
-    for (const log of todayLogs) {
-      if (!log.taken && !log.missed) {
-        const scheduled = new Date(log.scheduledTime);
-        const minPast = (now - scheduled) / 60000;
-        if (minPast > 5 && minPast <= 30) {
-          const med = log.medicineId;
-          if (med && !(await alreadyNotified('schedule_reminder', med._id))) {
-            await createNotif({
-              type: 'schedule_reminder', severity: 'warning',
-              title: '⏰ Dose Overdue',
-              message: `${med.name} (${med.dosage}) was scheduled at ${formatTimeLocal(scheduled)}. Please take it now!`,
-              medicineId: med._id,
-              expiresAt: new Date(Date.now() + 86400000)
-            });
-          }
-        }
-      }
-    }
-
-    // ── 3. LOW STOCK / REFILL ALERTS ──
+    // ── 2. REFILL / LOW STOCK ALERTS ──
     for (const med of medicines) {
       if (med.pillsRemaining <= 0 && !(await alreadyNotified('refill_urgent', med._id))) {
         await createNotif({
@@ -166,40 +146,6 @@ router.post('/generate', auth, async (req, res) => {
           });
         }
       }
-    }
-
-    // ── 4. PENDING DOSES TODAY ──
-    const pendingCount = todayLogs.filter(l => !l.taken && !l.missed).length;
-    if (pendingCount > 0 && !(await alreadyNotified('schedule_reminder'))) {
-      await createNotif({
-        type: 'schedule_reminder', severity: 'info',
-        title: '🔔 Doses Pending Today',
-        message: `You have ${pendingCount} dose${pendingCount > 1 ? 's' : ''} remaining for today. Stay on schedule!`,
-        expiresAt: new Date(Date.now() + 86400000)
-      });
-    }
-
-    // ── 5. ALL DONE TODAY ──
-    const allDone = todayLogs.length > 0 && todayLogs.every(l => l.taken || l.missed);
-    const takenCount = todayLogs.filter(l => l.taken).length;
-    if (allDone && takenCount > 0 && !(await alreadyNotified('all_done'))) {
-      await createNotif({
-        type: 'all_done', severity: 'success',
-        title: '🎉 All Doses Complete!',
-        message: `Amazing! You took ${takenCount} out of ${todayLogs.length} doses today. Great job!`,
-        expiresAt: new Date(Date.now() + 86400000)
-      });
-    }
-
-    // ── 6. ADHERENCE STREAK (3+ days perfect) ──
-    const threeDaysAgo = new Date(now.getTime() - 3 * 86400000);
-    const recentLogs = await DoseLog.find({ userId, scheduledTime: { $gte: threeDaysAgo, $lt: todayStart } });
-    if (recentLogs.length >= 3 && recentLogs.every(l => l.taken) && !(await alreadyNotified('streak'))) {
-      await createNotif({
-        type: 'streak', severity: 'success',
-        title: '🔥 3-Day Streak!',
-        message: "You've taken every dose for the past 3 days. Keep the streak going!"
-      });
     }
 
     // Fetch full notification list to return
