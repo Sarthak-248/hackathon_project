@@ -12,7 +12,7 @@ try {
       const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
       // Only check today's doses, not all past doses
       const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      todayStart.setUTCHours(0, 0, 0, 0);
 
       const missedDoses = await DoseLog.find({
         scheduledTime: { $gte: todayStart, $lt: thirtyMinAgo },

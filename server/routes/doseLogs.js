@@ -8,9 +8,9 @@ const router = express.Router();
 router.get('/today', auth, async (req, res) => {
   try {
     const start = new Date();
-    start.setHours(0, 0, 0, 0);
+    start.setUTCHours(0, 0, 0, 0);
     const end = new Date();
-    end.setHours(23, 59, 59, 999);
+    end.setUTCHours(23, 59, 59, 999);
 
     const logs = await DoseLog.find({
       userId: req.userId,
@@ -99,7 +99,7 @@ router.post('/generate', auth, async (req, res) => {
   try {
     const medicines = await Medicine.find({ userId: req.userId, isActive: true });
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
     
     let created = 0;
     for (const medicine of medicines) {
@@ -111,7 +111,7 @@ router.post('/generate', auth, async (req, res) => {
         else if (slot.period === 'AM' && hours === 12) hours24 = 0;
 
         const scheduledTime = new Date(today);
-        scheduledTime.setHours(hours24, minutes, 0, 0);
+        scheduledTime.setUTCHours(hours24, minutes, 0, 0);
 
         const exists = await DoseLog.findOne({
           userId: req.userId,

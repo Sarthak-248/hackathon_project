@@ -36,10 +36,9 @@ router.post('/', auth, async (req, res) => {
     const medicine = new Medicine({ ...req.body, userId: req.userId });
     await medicine.save();
 
-    // Auto-generate dose logs for today (only for times that haven't passed yet)
+    // Auto-generate dose logs for today
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const now = new Date();
+    today.setUTCHours(0, 0, 0, 0);
     for (const slot of medicine.timeSlots || []) {
       const [hours, minutes] = slot.time.split(':').map(Number);
       const scheduledTime = new Date(today);
@@ -51,10 +50,7 @@ router.post('/', auth, async (req, res) => {
         hours24 = 0;
       }
       
-      scheduledTime.setHours(hours24, minutes, 0, 0);
-
-      // Skip creating dose logs for times that have already passed today
-      if (scheduledTime < now) continue;
+      scheduledTime.setUTCHours(hours24, minutes, 0, 0);
       
       await new DoseLog({
         userId: req.userId,

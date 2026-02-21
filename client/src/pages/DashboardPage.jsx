@@ -267,10 +267,16 @@ export default function DashboardPage() {
 function DoseLogItem({ log, onTake }) {
   const med = log.medicineId;
   const scheduledTime = new Date(log.scheduledTime);
-  const now = new Date();
 
-  // Determine if the dose is in the "take" window (from scheduled time to 30 mins after)
-  const isTakeWindow = now >= scheduledTime && now <= new Date(scheduledTime.getTime() + 30 * 60 * 1000);
+  // The server stores times in UTC (e.g., 8:00 AM UTC for an 8:00 AM dose).
+  // To compare correctly with the user's local clock, we reconstruct
+  // the scheduled time using the UTC hours/minutes as local hours/minutes.
+  const now = new Date();
+  const localScheduled = new Date();
+  localScheduled.setHours(scheduledTime.getUTCHours(), scheduledTime.getUTCMinutes(), 0, 0);
+
+  const isPast = now >= localScheduled;
+  const isWithinTakeWindow = isPast && now <= new Date(localScheduled.getTime() + 30 * 60 * 1000);
 
   const timeStr = scheduledTime.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' });
 
@@ -298,7 +304,7 @@ function DoseLogItem({ log, onTake }) {
           <span className="text-sm font-semibold text-brand-600 dark:text-brand-400">Done</span>
         ) : log.missed ? (
           <span className="text-sm font-semibold text-danger-500">Missed</span>
-        ) : isTakeWindow ? (
+        ) : isWithinTakeWindow ? (
           <button
             onClick={() => onTake(log._id)}
             className="btn-primary"
@@ -307,7 +313,7 @@ function DoseLogItem({ log, onTake }) {
           </button>
         ) : (
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {now < scheduledTime ? 'Upcoming' : 'Pending'}
+            {!isPast ? 'Upcoming' : 'Pending'}
           </span>
         )}
       </div>
