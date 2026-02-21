@@ -275,7 +275,8 @@ function DoseLogItem({ log, onTake }) {
   useEffect(() => {
     const checkStatus = () => {
       const thirtyMinAfter = new Date(scheduledTime.getTime() + 30 * 60 * 1000);
-      const currentTime = new Date();
+      // Use ISO string to get a comparable UTC-based time
+      const currentTime = new Date(new Date().toISOString());
 
       const takeWindowActive = currentTime >= scheduledTime && currentTime <= thirtyMinAfter;
       setIsTakeWindow(takeWindowActive);
@@ -286,7 +287,7 @@ function DoseLogItem({ log, onTake }) {
     };
 
     checkStatus();
-    const interval = setInterval(checkStatus, 1000); // Check every second
+    const interval = setInterval(checkStatus, 60000); // Check every minute is enough
     return () => clearInterval(interval);
   }, [log.taken, scheduledTime]);
 
