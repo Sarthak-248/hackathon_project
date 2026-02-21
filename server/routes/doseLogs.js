@@ -7,10 +7,9 @@ const router = express.Router();
 // Get today's dose logs
 router.get('/today', auth, async (req, res) => {
   try {
-    const start = new Date();
-    start.setUTCHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setUTCHours(23, 59, 59, 999);
+    // Frontend sends local midnight and end-of-day as ISO strings
+    const start = req.query.start ? new Date(req.query.start) : (() => { const d = new Date(); d.setUTCHours(0,0,0,0); return d; })();
+    const end = req.query.end ? new Date(req.query.end) : (() => { const d = new Date(); d.setUTCHours(23,59,59,999); return d; })();
 
     const logs = await DoseLog.find({
       userId: req.userId,
@@ -94,12 +93,22 @@ router.get('/weekly-summary', auth, async (req, res) => {
   }
 });
 
+// Helper: Get midnight of user's local "today" as a UTC Date
+function getLocalMidnightUTC(timezoneOffset) {
+  const offsetMs = timezoneOffset * 60 * 1000;
+  const localTimeMs = Date.now() - offsetMs;
+  const midnightLocal = new Date(localTimeMs);
+  midnightLocal.setUTCHours(0, 0, 0, 0);
+  return new Date(midnightLocal.getTime() + offsetMs);
+}
+
 // Generate dose logs for a date range
 router.post('/generate', auth, async (req, res) => {
   try {
+    const timezoneOffset = req.body.timezoneOffset || 0;
+    const todayStart = getLocalMidnightUTC(timezoneOffset);
+
     const medicines = await Medicine.find({ userId: req.userId, isActive: true });
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
     
     let created = 0;
     for (const medicine of medicines) {
@@ -110,8 +119,8 @@ router.post('/generate', auth, async (req, res) => {
         if (slot.period === 'PM' && hours < 12) hours24 += 12;
         else if (slot.period === 'AM' && hours === 12) hours24 = 0;
 
-        const scheduledTime = new Date(today);
-        scheduledTime.setUTCHours(hours24, minutes, 0, 0);
+        // todayStart is user's local midnight in UTC; add wall clock hours
+        const scheduledTime = new Date(todayStart.getTime() + hours24 * 3600000 + minutes * 60000);
 
         const exists = await DoseLog.findOne({
           userId: req.userId,

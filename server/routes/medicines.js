@@ -30,27 +30,37 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// Helper: Get midnight of user's local "today" as a UTC Date
+function getLocalMidnightUTC(timezoneOffset) {
+  const offsetMs = timezoneOffset * 60 * 1000;
+  const localTimeMs = Date.now() - offsetMs;
+  const midnightLocal = new Date(localTimeMs);
+  midnightLocal.setUTCHours(0, 0, 0, 0);
+  return new Date(midnightLocal.getTime() + offsetMs);
+}
+
 // Add medicine
 router.post('/', auth, async (req, res) => {
   try {
-    const medicine = new Medicine({ ...req.body, userId: req.userId });
+    const { timezoneOffset, ...medicineData } = req.body;
+    const offset = timezoneOffset || 0;
+    const medicine = new Medicine({ ...medicineData, userId: req.userId });
     await medicine.save();
 
-    // Auto-generate dose logs for today
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    // Auto-generate dose logs for today using user's local timezone
+    const todayStart = getLocalMidnightUTC(offset);
     for (const slot of medicine.timeSlots || []) {
       const [hours, minutes] = slot.time.split(':').map(Number);
-      const scheduledTime = new Date(today);
       
       let hours24 = hours;
       if (slot.period === 'PM' && hours < 12) {
         hours24 += 12;
-      } else if (slot.period === 'AM' && hours === 12) { // Midnight case
+      } else if (slot.period === 'AM' && hours === 12) {
         hours24 = 0;
       }
       
-      scheduledTime.setUTCHours(hours24, minutes, 0, 0);
+      // todayStart is user's local midnight in UTC; add wall clock hours
+      const scheduledTime = new Date(todayStart.getTime() + hours24 * 3600000 + minutes * 60000);
       
       await new DoseLog({
         userId: req.userId,

@@ -27,16 +27,20 @@ export const api = {
 
   // Medicines
   getMedicines: () => request('GET', '/medicines'),
-  addMedicine: (body) => request('POST', '/medicines', body),
+  addMedicine: (body) => request('POST', '/medicines', { ...body, timezoneOffset: new Date().getTimezoneOffset() }),
   updateMedicine: (id, body) => request('PUT', `/medicines/${id}`, body),
   deleteMedicine: (id) => request('DELETE', `/medicines/${id}`),
   getRefillAlerts: () => request('GET', '/medicines/refill-alerts'),
 
   // Dose Logs
-  getTodayLogs: () => request('GET', '/dose-logs/today'),
+  getTodayLogs: () => {
+    const s = new Date(); s.setHours(0,0,0,0);
+    const e = new Date(); e.setHours(23,59,59,999);
+    return request('GET', `/dose-logs/today?start=${s.toISOString()}&end=${e.toISOString()}`);
+  },
   markDoseTaken: (id) => request('PUT', `/dose-logs/${id}/take`),
   getWeeklySummary: () => request('GET', '/dose-logs/weekly-summary'),
-  generateLogs: () => request('POST', '/dose-logs/generate'),
+  generateLogs: () => request('POST', '/dose-logs/generate', { timezoneOffset: new Date().getTimezoneOffset() }),
 
   // Notifications
   getNotifications: () => request('GET', '/notifications'),

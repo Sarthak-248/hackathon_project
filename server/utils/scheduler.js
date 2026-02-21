@@ -10,12 +10,11 @@ try {
     try {
       const now = new Date();
       const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
-      // Only check today's doses, not all past doses
-      const todayStart = new Date();
-      todayStart.setUTCHours(0, 0, 0, 0);
+      // Check doses from the last 2 days (covers all timezones)
+      const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
       const missedDoses = await DoseLog.find({
-        scheduledTime: { $gte: todayStart, $lt: thirtyMinAgo },
+        scheduledTime: { $gte: twoDaysAgo, $lt: thirtyMinAgo },
         taken: false,
         missed: false
       }).populate('medicineId');

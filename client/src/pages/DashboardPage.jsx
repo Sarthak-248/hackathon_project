@@ -80,11 +80,11 @@ export default function DashboardPage() {
   const pendingToday = totalToday - takenToday - missedToday;
   const progressPercent = totalToday > 0 ? Math.round((takenToday / totalToday) * 100) : 0;
 
-  // Group logs by time period
+  // Group logs by time period (times are now stored as correct UTC, so getHours() gives correct local time)
   const groupedLogs = {
-    morning: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getUTCHours(); return h >= 4 && h < 12; }),
-    afternoon: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getUTCHours(); return h >= 12 && h < 17; }),
-    night: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getUTCHours(); return h >= 17 || h < 4; }),
+    morning: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 4 && h < 12; }),
+    afternoon: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 12 && h < 17; }),
+    night: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 17 || h < 4; }),
   };
 
   const renderSection = (title, logs) => {
@@ -267,18 +267,14 @@ export default function DashboardPage() {
 function DoseLogItem({ log, onTake }) {
   const med = log.medicineId;
   const scheduledTime = new Date(log.scheduledTime);
-
-  // The server stores times in UTC (e.g., 8:00 AM UTC for an 8:00 AM dose).
-  // To compare correctly with the user's local clock, we reconstruct
-  // the scheduled time using the UTC hours/minutes as local hours/minutes.
   const now = new Date();
-  const localScheduled = new Date();
-  localScheduled.setHours(scheduledTime.getUTCHours(), scheduledTime.getUTCMinutes(), 0, 0);
 
-  const isPast = now >= localScheduled;
-  const isWithinTakeWindow = isPast && now <= new Date(localScheduled.getTime() + 30 * 60 * 1000);
+  // Times are now stored as correct UTC (8 AM IST = 2:30 AM UTC)
+  // So direct comparison with local Date works correctly
+  const isPast = now >= scheduledTime;
+  const isWithinTakeWindow = isPast && now <= new Date(scheduledTime.getTime() + 30 * 60 * 1000);
 
-  const timeStr = scheduledTime.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' });
+  const timeStr = scheduledTime.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className={`p-4 rounded-xl flex items-center gap-4 transition-all ${
