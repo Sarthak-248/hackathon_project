@@ -87,12 +87,15 @@ router.post('/generate', auth, async (req, res) => {
 
     // ── 1. MISSED DOSE ALERTS ──
     for (const log of todayLogs) {
-      if (!log.taken && !log.missed) {
+      if (!log.taken) {
         const scheduled = new Date(log.scheduledTime);
         const minPast = (now - scheduled) / 60000;
-        if (minPast > 30) {
-          // Mark as missed
-          await DoseLog.findByIdAndUpdate(log._id, { missed: true });
+        // Already marked missed (by scheduler/creation) OR newly missed (>30 min overdue)
+        if (log.missed || minPast > 30) {
+          // Mark as missed if not already
+          if (!log.missed) {
+            await DoseLog.findByIdAndUpdate(log._id, { missed: true });
+          }
           const med = log.medicineId;
           if (med && !(await alreadyNotified('missed_dose', med._id))) {
             await createNotif({
