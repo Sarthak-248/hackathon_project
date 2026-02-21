@@ -5,6 +5,15 @@ const DoseLog = require('../models/DoseLog');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
+// Format a UTC date as HH:MM AM/PM (reads UTC hours/minutes since we store correct UTC)
+function formatTimeLocal(date) {
+  const h = date.getUTCHours();
+  const m = date.getUTCMinutes();
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 // ── GET all notifications for this user ──
 router.get('/', auth, async (req, res) => {
   try {
