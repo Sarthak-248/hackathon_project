@@ -98,7 +98,7 @@ router.post('/generate', auth, async (req, res) => {
             await createNotif({
               type: 'missed_dose', severity: 'error',
               title: '❌ Missed Dose',
-              message: `${med.name} (${med.dosage}) was due at ${scheduled.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })} but was not taken. Take it now if safe to do so.`,
+              message: `${med.name} (${med.dosage}) was due at ${formatTimeLocal(scheduled)} but was not taken. Take it now if safe to do so.`,
               medicineId: med._id,
               metadata: { scheduledTime: scheduled, dosage: med.dosage }
             });
@@ -118,7 +118,7 @@ router.post('/generate', auth, async (req, res) => {
             await createNotif({
               type: 'schedule_reminder', severity: 'warning',
               title: '⏰ Dose Overdue',
-              message: `${med.name} (${med.dosage}) was scheduled at ${scheduled.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}. Please take it now!`,
+              message: `${med.name} (${med.dosage}) was scheduled at ${formatTimeLocal(scheduled)}. Please take it now!`,
               medicineId: med._id,
               expiresAt: new Date(Date.now() + 86400000)
             });

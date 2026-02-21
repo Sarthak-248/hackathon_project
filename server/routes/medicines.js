@@ -62,10 +62,15 @@ router.post('/', auth, async (req, res) => {
       // todayStart is user's local midnight in UTC; add wall clock hours
       const scheduledTime = new Date(todayStart.getTime() + hours24 * 3600000 + minutes * 60000);
       
+      // If the scheduled time is more than 30 minutes in the past, mark as missed immediately
+      const now = new Date();
+      const isMissed = (now - scheduledTime) > 30 * 60 * 1000;
+
       await new DoseLog({
         userId: req.userId,
         medicineId: medicine._id,
-        scheduledTime
+        scheduledTime,
+        missed: isMissed
       }).save();
     }
 

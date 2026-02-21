@@ -137,10 +137,15 @@ router.post('/generate', auth, async (req, res) => {
         });
 
         if (!exists) {
+          // If the scheduled time is more than 30 minutes in the past, mark as missed immediately
+          const now = new Date();
+          const isMissed = (now - scheduledTime) > 30 * 60 * 1000;
+
           await new DoseLog({
             userId: req.userId,
             medicineId: medicine._id,
-            scheduledTime
+            scheduledTime,
+            missed: isMissed
           }).save();
           created++;
         }

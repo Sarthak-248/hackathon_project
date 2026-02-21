@@ -29,11 +29,19 @@ try {
         });
 
         if (!existing) {
+          // Format scheduled time as HH:MM AM/PM for the user
+          const st = dose.scheduledTime;
+          const h = st.getUTCHours();
+          const m = st.getUTCMinutes();
+          const period = h >= 12 ? 'PM' : 'AM';
+          const h12 = h % 12 || 12;
+          const timeStr = `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+
           await Notification.create({
             userId: dose.userId,
             type: 'missed_dose',
             title: 'Missed Dose',
-            message: `You missed your ${dose.medicineId.name} dose scheduled for ${dose.scheduledTime.toLocaleTimeString()}.`,
+            message: `You missed your ${dose.medicineId.name} dose scheduled for ${timeStr}.`,
             severity: 'warning',
             medicineId: dose.medicineId._id,
           });
