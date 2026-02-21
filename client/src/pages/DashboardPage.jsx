@@ -290,7 +290,7 @@ function DoseLogItem({ log, onTake }) {
     return () => clearInterval(interval);
   }, [log.taken, scheduledTime]);
 
-  const timeStr = scheduledTime.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+  const timeStr = scheduledTime.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' });
 
   let status;
   if (log.taken) {
