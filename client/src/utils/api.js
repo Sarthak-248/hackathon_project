@@ -44,7 +44,7 @@ export const api = {
 
   // Notifications
   getNotifications: () => request('GET', '/notifications'),
-  generateNotifications: () => request('POST', '/notifications/generate'),
+  generateNotifications: () => request('POST', '/notifications/generate', { timezoneOffset: new Date().getTimezoneOffset() }),
   markNotificationAsRead: (id) => request('PUT', `/notifications/${id}/read`),
   markAllNotificationsAsRead: () => request('PUT', '/notifications/read-all'),
 

@@ -29,13 +29,23 @@ try {
         });
 
         if (!existing) {
-          // Format scheduled time as HH:MM AM/PM for the user
+          // Format scheduled time — scheduler doesn't know user's timezone,
+          // so use the medicine's timeSlots for display
           const st = dose.scheduledTime;
-          const h = st.getUTCHours();
-          const m = st.getUTCMinutes();
-          const period = h >= 12 ? 'PM' : 'AM';
-          const h12 = h % 12 || 12;
-          const timeStr = `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+          const med = dose.medicineId;
+          let timeStr = 'scheduled time';
+          if (med.timeSlots && med.timeSlots.length > 0) {
+            // Use the original time string from the medicine
+            const slot = med.timeSlots[0];
+            timeStr = `${slot.time} ${slot.period}`;
+          } else {
+            // Fallback: display UTC time (may not match local)
+            const h = st.getUTCHours();
+            const m = st.getUTCMinutes();
+            const period = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            timeStr = `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+          }
 
           await Notification.create({
             userId: dose.userId,

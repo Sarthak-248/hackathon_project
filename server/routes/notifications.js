@@ -5,10 +5,14 @@ const DoseLog = require('../models/DoseLog');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
-// Format a UTC date as HH:MM AM/PM (reads UTC hours/minutes since we store correct UTC)
-function formatTimeLocal(date) {
-  const h = date.getUTCHours();
-  const m = date.getUTCMinutes();
+// Format a UTC date as HH:MM AM/PM in user's local time
+function formatTimeLocal(date, timezoneOffset) {
+  // timezoneOffset is in minutes (e.g. -330 for IST)
+  // Convert UTC to local: local = UTC - offset
+  const localMs = date.getTime() - (timezoneOffset || 0) * 60 * 1000;
+  const local = new Date(localMs);
+  const h = local.getUTCHours();
+  const m = local.getUTCMinutes();
   const period = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
   return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
@@ -73,6 +77,7 @@ router.post('/clear-read', auth, async (req, res) => {
 router.post('/generate', auth, async (req, res) => {
   try {
     const userId = req.userId;
+    const timezoneOffset = req.body.timezoneOffset || 0;
     const now = new Date();
     const todayStart = new Date(now.getTime() - 24 * 60 * 60 * 1000); // last 24 hours for dedup
     const todayEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000); // next 24 hours
@@ -110,7 +115,7 @@ router.post('/generate', auth, async (req, res) => {
             await createNotif({
               type: 'missed_dose', severity: 'error',
               title: '❌ Missed Dose',
-              message: `${med.name} (${med.dosage}) was due at ${formatTimeLocal(scheduled)} but was not taken. Take it now if safe to do so.`,
+              message: `${med.name} (${med.dosage}) was due at ${formatTimeLocal(scheduled, timezoneOffset)} but was not taken. Take it now if safe to do so.`,
               medicineId: med._id,
               metadata: { scheduledTime: scheduled, dosage: med.dosage }
             });
