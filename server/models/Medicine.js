@@ -5,7 +5,10 @@ const medicineSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   dosage: { type: String, required: true },
   frequency: { type: String, enum: ['daily', 'twice_daily', 'thrice_daily', 'weekly', 'as_needed'], default: 'daily' },
-  timeSlots: [{ type: String }], // ["08:00", "20:00"]
+  timeSlots: [{
+    time: { type: String, required: true }, // e.g., "08:00"
+    period: { type: String, enum: ['AM', 'PM'], required: true }
+  }],
   startDate: { type: Date, default: Date.now },
   endDate: { type: Date },
   refillInterval: { type: Number, default: 30 }, // days

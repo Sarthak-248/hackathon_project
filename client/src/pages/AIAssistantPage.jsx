@@ -41,12 +41,19 @@ export default function AIAssistantPage() {
         ...result.schedule.beforeBed || [],
       ];
       for (const med of allMeds) {
+        const [hourStr, minuteStr] = (med.time !== 'As needed' ? med.time : '08:00').split(':');
+        const hour = parseInt(hourStr, 10);
+        const period = hour < 12 ? 'AM' : 'PM';
+        const time12hr = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        const formattedTime = `${String(time12hr).padStart(2, '0')}:${minuteStr}`;
+
         await api.addMedicine({
           name: med.name,
           dosage: med.dosage || '1 tablet',
           frequency: 'daily',
-          timeSlots: [med.time !== 'As needed' ? med.time : '08:00'],
+          timeSlots: [{ time: formattedTime, period }],
           category: med.category || '',
+          pillsRemaining: 30, // Default
           precautions: result.precautions?.find(p => p.category === med.category)?.precaution || '',
         });
       }

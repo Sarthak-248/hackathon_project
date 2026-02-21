@@ -38,6 +38,11 @@ export const api = {
   getWeeklySummary: () => request('GET', '/dose-logs/weekly-summary'),
   generateLogs: () => request('POST', '/dose-logs/generate'),
 
+  // Notifications
+  getNotifications: () => request('GET', '/notifications'),
+  markNotificationAsRead: (id) => request('PUT', `/notifications/${id}/read`),
+  markAllNotificationsAsRead: () => request('PUT', '/notifications/read-all'),
+
   // AI
   suggestSchedule: (input) => request('POST', '/ai/suggest-schedule', { input }),
 };

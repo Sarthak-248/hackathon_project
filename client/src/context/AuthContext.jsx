@@ -31,8 +31,8 @@ export function AuthProvider({ children }) {
     }
   }, [caregiverVerified]);
 
-  const login = async (email, password) => {
-    const data = await api.login({ email, password });
+  const login = async (email, password, caregiverPIN) => {
+    const data = await api.login({ email, password, caregiverPIN });
     localStorage.setItem('token', data.token);
     setUser(data.user);
     return data;

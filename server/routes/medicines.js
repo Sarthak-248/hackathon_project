@@ -39,10 +39,18 @@ router.post('/', auth, async (req, res) => {
     // Auto-generate dose logs for today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    for (const timeSlot of medicine.timeSlots || []) {
-      const [hours, minutes] = timeSlot.split(':').map(Number);
+    for (const slot of medicine.timeSlots || []) {
+      const [hours, minutes] = slot.time.split(':').map(Number);
       const scheduledTime = new Date(today);
-      scheduledTime.setHours(hours, minutes, 0, 0);
+      
+      let hours24 = hours;
+      if (slot.period === 'PM' && hours < 12) {
+        hours24 += 12;
+      } else if (slot.period === 'AM' && hours === 12) { // Midnight case
+        hours24 = 0;
+      }
+      
+      scheduledTime.setHours(hours24, minutes, 0, 0);
       
       await new DoseLog({
         userId: req.userId,

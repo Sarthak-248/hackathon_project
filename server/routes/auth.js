@@ -9,16 +9,33 @@ const JWT_SECRET = process.env.JWT_SECRET || 'medicine-companion-secret-key';
 // Register
 router.post('/register', async (req, res) => {
   try {
+    console.log('Register request body:', req.body);
     const { name, email, password, role, caregiverPIN } = req.body;
-    const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ error: 'Email already registered' });
 
-    const user = new User({ name, email, password, role, caregiverPIN });
+    const userPayload = { name, email, password, role };
+    if (role === 'elderly') {
+      if (!caregiverPIN) {
+        return res.status(400).json({ error: 'Caregiver PIN is required for elderly users' });
+      }
+      userPayload.caregiverPIN = caregiverPIN;
+    }
+
+    console.log('Checking for existing user with email:', email);
+    const existing = await User.findOne({ email });
+    if (existing) {
+      console.log('User already exists:', email);
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    console.log('Creating new user with payload:', userPayload);
+    const user = new User(userPayload);
     await user.save();
+    console.log('User saved successfully:', user);
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
+    console.error('Error during registration:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -26,12 +43,23 @@ router.post('/register', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, caregiverPIN } = req.body;
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
+
+    // If the user is an elderly user, a caregiver PIN is required
+    if (user.role === 'elderly') {
+      if (!caregiverPIN) {
+        return res.status(400).json({ error: 'Caregiver PIN is required' });
+      }
+      const isPinMatch = await user.comparePIN(caregiverPIN);
+      if (!isPinMatch) {
+        return res.status(400).json({ error: 'Invalid Caregiver PIN' });
+      }
+    }
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });

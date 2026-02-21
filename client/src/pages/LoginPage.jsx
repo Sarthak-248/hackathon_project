@@ -22,7 +22,7 @@ export default function LoginPage() {
       if (isRegister) {
         await register(form);
       } else {
-        await login(form.email, form.password);
+        await login(form.email, form.password, form.caregiverPIN);
       }
     } catch (err) {
       setError(err.message);
@@ -98,6 +98,20 @@ export default function LoginPage() {
                 required
               />
             </div>
+
+            {!isRegister && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Caregiver PIN</label>
+                <input
+                  type="password"
+                  className="input-field"
+                  placeholder="Enter 4-digit PIN"
+                  value={form.caregiverPIN}
+                  onChange={e => setForm(f => ({ ...f, caregiverPIN: e.target.value }))}
+                  maxLength="4"
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Password</label>

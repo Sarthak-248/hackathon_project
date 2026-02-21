@@ -12,8 +12,7 @@ router.get('/', auth, async (req, res) => {
       .populate('medicineId', 'name dosage category')
       .sort({ createdAt: -1 })
       .limit(50);
-    const unreadCount = await Notification.countDocuments({ userId: req.userId, read: false });
-    res.json({ notifications, unreadCount });
+    res.json(notifications);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

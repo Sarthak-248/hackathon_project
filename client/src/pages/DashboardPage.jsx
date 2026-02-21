@@ -82,9 +82,25 @@ export default function DashboardPage() {
 
   // Group logs by time period
   const groupedLogs = {
-    morning: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 5 && h < 12; }),
+    morning: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 4 && h < 12; }),
     afternoon: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 12 && h < 17; }),
-    evening: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 17 || h < 5; }),
+    night: doseLogs.filter(l => { const h = new Date(l.scheduledTime).getHours(); return h >= 17 || h < 4; }),
+  };
+
+  const renderSection = (title, logs) => {
+    if (logs.length === 0) return null;
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden mb-6">
+        <div className="p-4">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-3">{title}</h3>
+          <div className="space-y-3">
+            {logs.map(log => (
+              <DoseLogItem key={log._id} log={log} onTake={handleTakeDose} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -199,7 +215,7 @@ export default function DashboardPage() {
                   </h3>
                   <div className="space-y-2">
                     {logs.map((log) => (
-                      <DoseCard key={log._id} log={log} onTake={handleTakeDose} />
+                      <DoseLogItem key={log._id} log={log} onTake={handleTakeDose} />
                     ))}
                   </div>
                 </div>
@@ -248,63 +264,80 @@ export default function DashboardPage() {
   );
 }
 
-function DoseCard({ log, onTake }) {
+function DoseLogItem({ log, onTake }) {
   const med = log.medicineId;
-  const time = new Date(log.scheduledTime);
-  const timeStr = time.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
-  const isPast = time < new Date();
+  const scheduledTime = new Date(log.scheduledTime);
+  const now = new Date();
 
-  let status, statusColor, statusBg;
+  const [isTakeWindow, setIsTakeWindow] = useState(false);
+  const [isMissed, setIsMissed] = useState(log.missed);
+
+  useEffect(() => {
+    const checkStatus = () => {
+      const thirtyMinAfter = new Date(scheduledTime.getTime() + 30 * 60 * 1000);
+      const currentTime = new Date();
+
+      const takeWindowActive = currentTime >= scheduledTime && currentTime <= thirtyMinAfter;
+      setIsTakeWindow(takeWindowActive);
+
+      if (!log.taken && currentTime > thirtyMinAfter) {
+        setIsMissed(true);
+      }
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 1000); // Check every second
+    return () => clearInterval(interval);
+  }, [log.taken, scheduledTime]);
+
+  const timeStr = scheduledTime.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+
+  let status;
   if (log.taken) {
     status = 'Taken';
-    statusColor = 'text-brand-600 dark:text-brand-400';
-    statusBg = 'bg-brand-50 dark:bg-brand-900/20 border-brand-200 dark:border-brand-700/30';
-  } else if (log.missed) {
+  } else if (isMissed) {
     status = 'Missed';
-    statusColor = 'text-danger-500';
-    statusBg = 'bg-danger-50 dark:bg-danger-500/10 border-danger-200 dark:border-danger-500/20';
-  } else if (isPast) {
-    status = 'Overdue';
-    statusColor = 'text-warm-500';
-    statusBg = 'bg-warm-50 dark:bg-warm-500/10 border-warm-200 dark:border-warm-500/20';
-  } else {
+  } else if (now < scheduledTime) {
     status = 'Upcoming';
-    statusColor = 'text-gray-500 dark:text-gray-400';
-    statusBg = 'bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700';
+  } else {
+    status = 'Pending';
   }
 
   return (
-    <div className={`rounded-2xl border p-4 flex items-center gap-4 transition-all ${statusBg}`}>
-      <div className="flex-shrink-0">
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-          log.taken ? 'bg-brand-500' : log.missed ? 'bg-danger-400' : 'bg-gray-200 dark:bg-gray-600'
-        }`}>
-          {log.taken ? <CheckCircle2 className="w-6 h-6 text-white" /> : 
-           log.missed ? <AlertTriangle className="w-6 h-6 text-white" /> :
-           <Pill className="w-6 h-6 text-gray-500 dark:text-gray-300" />}
-        </div>
+    <div className={`p-4 rounded-xl flex items-center gap-4 transition-all ${
+      log.taken ? 'bg-brand-50 dark:bg-brand-900/30' : 
+      isMissed ? 'bg-danger-50 dark:bg-danger-500/10' : 
+      'bg-white dark:bg-gray-700/50'
+    }`}>
+      <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+        log.taken ? 'bg-brand-500' : isMissed ? 'bg-danger-400' : 'bg-gray-200 dark:bg-gray-600'
+      }`}>
+        {log.taken ? <CheckCircle2 className="w-6 h-6 text-white" /> : 
+         isMissed ? <AlertTriangle className="w-6 h-6 text-white" /> :
+         <Pill className="w-6 h-6 text-gray-500 dark:text-gray-300" />}
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-gray-900 dark:text-white text-elder-base">{med?.name || 'Unknown'}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {med?.dosage} · {timeStr}
-        </p>
-        {med?.precautions && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">{med.precautions}</p>
-        )}
+        <p className="font-semibold text-gray-900 dark:text-white">{med?.name || 'Unknown'}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{med?.dosage} · {timeStr}</p>
       </div>
 
-      <div className="flex-shrink-0 text-right">
-        {!log.taken && !log.missed ? (
+      <div className="flex-shrink-0">
+        {log.taken ? (
+          <span className="text-sm font-semibold text-brand-600 dark:text-brand-400">Done</span>
+        ) : isMissed ? (
+          <span className="text-sm font-semibold text-danger-500">Missed</span>
+        ) : isTakeWindow ? (
           <button
             onClick={() => onTake(log._id)}
-            className="bg-brand-500 hover:bg-brand-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all active:scale-95 shadow-sm"
+            className="btn-primary"
           >
-            Take ✓
+            Take
           </button>
         ) : (
-          <span className={`badge ${log.taken ? 'badge-green' : 'badge-red'}`}>{status}</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {now < scheduledTime ? 'Upcoming' : 'Pending'}
+          </span>
         )}
       </div>
     </div>

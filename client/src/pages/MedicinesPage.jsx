@@ -88,8 +88,10 @@ export default function MedicinesPage() {
                   </div>
                   <div className="flex flex-wrap gap-2 mt-3">
                     {med.category && <span className="badge-green text-xs">{med.category}</span>}
-                    {(med.timeSlots || []).map((t, i) => (
-                      <span key={i} className="badge bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs flex items-center gap-1"><Clock className="w-3 h-3" /> {t}</span>
+                    {(med.timeSlots || []).map((slot, i) => (
+                      <span key={i} className="badge bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {slot.time} {slot.period}
+                      </span>
                     ))}
                     {med.pillsRemaining !== undefined && med.pillsRemaining <= 10 && (
                       <span className="badge-red text-xs flex items-center gap-1"><Package className="w-3 h-3" /> {med.pillsRemaining} pills left</span>
@@ -119,16 +121,41 @@ export default function MedicinesPage() {
 
 function MedicineFormModal({ medicine, onSave, onClose }) {
   const [form, setForm] = useState({
-    name: medicine?.name || '', dosage: medicine?.dosage || '', frequency: medicine?.frequency || 'daily',
-    timeSlots: medicine?.timeSlots?.join(', ') || '08:00', category: medicine?.category || '',
-    precautions: medicine?.precautions || '', refillInterval: medicine?.refillInterval || 30, pillsRemaining: medicine?.pillsRemaining || 30,
+    name: medicine?.name || '',
+    dosage: medicine?.dosage || '',
+    frequency: medicine?.frequency || 'daily',
+    timeSlots: medicine?.timeSlots || [{ time: '08:00', period: 'AM' }],
+    category: medicine?.category || '',
+    precautions: medicine?.precautions || '',
+    refillInterval: medicine?.refillInterval || 30,
+    pillsRemaining: medicine?.pillsRemaining || 30,
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  const handleTimeSlotChange = (index, field, value) => {
+    const newTimeSlots = [...form.timeSlots];
+    newTimeSlots[index][field] = value;
+    set('timeSlots', newTimeSlots);
+  };
+
+  const addTimeSlot = () => {
+    set('timeSlots', [...form.timeSlots, { time: '20:00', period: 'PM' }]);
+  };
+
+  const removeTimeSlot = (index) => {
+    const newTimeSlots = form.timeSlots.filter((_, i) => i !== index);
+    set('timeSlots', newTimeSlots);
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault(); setSaving(true);
-    await onSave({ ...form, timeSlots: form.timeSlots.split(',').map(t => t.trim()).filter(Boolean), refillInterval: Number(form.refillInterval), pillsRemaining: Number(form.pillsRemaining) });
+    e.preventDefault();
+    setSaving(true);
+    await onSave({
+      ...form,
+      refillInterval: Number(form.refillInterval),
+      pillsRemaining: Number(form.pillsRemaining)
+    });
     setSaving(false);
   };
 
@@ -163,8 +190,25 @@ function MedicineFormModal({ medicine, onSave, onClose }) {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Time Slots (comma-separated)</label>
-            <input className="input-field" placeholder="08:00, 20:00" value={form.timeSlots} onChange={e => set('timeSlots', e.target.value)} />
+            <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Time Slots</label>
+            <div className="space-y-2">
+              {form.timeSlots.map((slot, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    className="input-field"
+                    value={slot.time}
+                    onChange={e => handleTimeSlotChange(index, 'time', e.target.value)}
+                  />
+                  <button type="button" onClick={() => removeTimeSlot(index)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                    <X className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button type="button" onClick={addTimeSlot} className="mt-2 text-sm font-semibold text-brand-600 hover:text-brand-500">
+              + Add Time Slot
+            </button>
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Category</label>

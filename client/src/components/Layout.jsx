@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
+import { api } from '../utils/api';
 import {
   LayoutDashboard, Pill, BarChart3, Bot, LogOut,
-  Sun, Moon, Menu, X, Shield, Bell, Heart
+  Sun, Moon, Menu, X, Shield, Bell, Heart, Package, AlertCircle
 } from 'lucide-react';
 
 const navItems = [
@@ -18,7 +20,51 @@ export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const { dark, toggle } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [lastNotifDate, setLastNotifDate] = useState(new Date());
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const fetchNotifications = async (isInitial = false) => {
+    try {
+      const notifs = await api.getNotifications();
+      setNotifications(notifs);
+      if (isInitial) {
+        setLastNotifDate(notifs.length > 0 ? new Date(notifs[0].createdAt) : new Date());
+      } else if (notifs.length > 0) {
+        const latestNotifDate = new Date(notifs[0].createdAt);
+        if (latestNotifDate > lastNotifDate) {
+          const newNotif = notifs[0];
+          showToast(newNotif.message, {
+            type: newNotif.severity === 'warning' ? 'warning' : 'info',
+            duration: 5000
+          });
+          setLastNotifDate(latestNotifDate);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch notifications", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications(true);
+    const interval = setInterval(() => fetchNotifications(), 15000); // Poll every 15 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleNotificationClick = (notif) => {
+    api.markNotificationAsRead(notif._id);
+    setNotifications(notifications.map(n => n._id === notif._id ? { ...n, read: true } : n));
+    if (notif.medicineId) {
+      navigate('/medicines');
+    }
+    setShowNotifications(false);
+  };
 
   return (
     <div className="min-h-screen bg-[#f4f7f5] dark:bg-[#0d1210] transition-colors duration-300">
@@ -32,9 +78,12 @@ export default function Layout({ children }) {
             <span className="text-2xl">💊</span>
             <span className="font-display text-elder-lg text-gray-900 dark:text-white">MediCare</span>
           </div>
-          <button onClick={toggle} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/50">
-            {dark ? <Sun className="w-5 h-5 text-warm-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell unreadCount={unreadCount} onClick={() => setShowNotifications(!showNotifications)} />
+            <button onClick={toggle} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/50">
+              {dark ? <Sun className="w-5 h-5 text-warm-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -118,6 +167,16 @@ export default function Layout({ children }) {
           {/* Bottom Actions */}
           <div className="p-4 space-y-2 border-t border-gray-100 dark:border-gray-800">
             <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="hidden lg:flex w-full items-center gap-3 px-4 py-3 rounded-2xl text-elder-base font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/60 relative"
+            >
+              <Bell className="w-5 h-5" />
+              <span>Notifications</span>
+              {unreadCount > 0 && (
+                <span className="ml-auto text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full bg-danger-400/20 text-danger-500">{unreadCount}</span>
+              )}
+            </button>
+            <button
               onClick={toggle}
               className="hidden lg:flex w-full items-center gap-3 px-4 py-3 rounded-2xl text-elder-base font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/60"
             >
@@ -141,6 +200,93 @@ export default function Layout({ children }) {
           {children}
         </div>
       </main>
+
+      {/* Notifications Dropdown */}
+      <NotificationDropdown
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        notifications={notifications}
+        onNotificationClick={handleNotificationClick}
+        onReadAll={() => {
+          api.markAllNotificationsAsRead();
+          setNotifications(notifications.map(n => ({ ...n, read: true })));
+        }}
+      />
+    </div>
+  );
+}
+
+function NotificationBell({ unreadCount, onClick }) {
+  return (
+    <button onClick={onClick} className="relative p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/50">
+      <Bell className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+      {unreadCount > 0 && (
+        <span className="absolute top-1 right-1.5 w-4 h-4 text-xs bg-danger-500 text-white rounded-full flex items-center justify-center font-bold">
+          {unreadCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function NotificationDropdown({ isOpen, onClose, notifications, onNotificationClick, onReadAll }) {
+  const navigate = useNavigate();
+
+  if (!isOpen) return null;
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const getIcon = (type) => {
+    switch (type) {
+      case 'missed_dose': return <AlertCircle className="w-5 h-5 text-danger-500" />;
+      case 'refill_warning': return <Package className="w-5 h-5 text-warm-500" />;
+      default: return <Bell className="w-5 h-5 text-brand-500" />;
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-40" onClick={onClose}>
+      <div
+        className="absolute top-16 right-4 lg:right-auto lg:left-72 lg:top-auto lg:bottom-24 w-80 max-h-[70vh] overflow-y-auto card !p-0 animate-scale-in"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+          <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
+          {unreadCount > 0 && (
+            <button onClick={onReadAll} className="text-sm font-medium text-brand-600 hover:text-brand-500">Mark all as read</button>
+          )}
+        </div>
+        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+          {notifications.length === 0 ? (
+            <p className="p-8 text-center text-gray-500">No notifications yet.</p>
+          ) : (
+            notifications.map(notif => (
+              <div
+                key={notif._id}
+                onClick={() => onNotificationClick(notif)}
+                className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 ${!notif.read ? 'bg-brand-50/50 dark:bg-brand-900/20' : ''}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">{getIcon(notif.type)}</div>
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">{notif.message}</p>
+                    <p className="text-xs text-gray-400 mt-1">{new Date(notif.createdAt).toLocaleString()}</p>
+                  </div>
+                  {!notif.read && <div className="w-2.5 h-2.5 rounded-full bg-brand-500 mt-2 ml-auto flex-shrink-0" />}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="p-2 border-t border-gray-100 dark:border-gray-800">
+          <button
+            onClick={() => { onClose(); navigate('/notifications'); }}
+            className="w-full text-center py-2 text-sm font-semibold text-brand-600 hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded-lg"
+          >
+            View all notifications
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

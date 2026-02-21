@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const medicineRoutes = require('./routes/medicines');
 const doseLogRoutes = require('./routes/doseLogs');
 const aiRoutes = require('./routes/ai');
+const notificationsRoutes = require('./routes/notifications');
 const { checkMissedDoses, checkRefills } = require('./utils/scheduler');
 
 const app = express();
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/medicines', medicineRoutes);
 app.use('/api/dose-logs', doseLogRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
