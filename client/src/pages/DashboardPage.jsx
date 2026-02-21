@@ -269,52 +269,22 @@ function DoseLogItem({ log, onTake }) {
   const scheduledTime = new Date(log.scheduledTime);
   const now = new Date();
 
-  const [isTakeWindow, setIsTakeWindow] = useState(false);
-  const [isMissed, setIsMissed] = useState(log.missed);
-
-  useEffect(() => {
-    const checkStatus = () => {
-      const thirtyMinAfter = new Date(scheduledTime.getTime() + 30 * 60 * 1000);
-      // Use ISO string to get a comparable UTC-based time
-      const currentTime = new Date(new Date().toISOString());
-
-      const takeWindowActive = currentTime >= scheduledTime && currentTime <= thirtyMinAfter;
-      setIsTakeWindow(takeWindowActive);
-
-      if (!log.taken && currentTime > thirtyMinAfter) {
-        setIsMissed(true);
-      }
-    };
-
-    checkStatus();
-    const interval = setInterval(checkStatus, 60000); // Check every minute is enough
-    return () => clearInterval(interval);
-  }, [log.taken, scheduledTime]);
+  // Determine if the dose is in the "take" window (from scheduled time to 30 mins after)
+  const isTakeWindow = now >= scheduledTime && now <= new Date(scheduledTime.getTime() + 30 * 60 * 1000);
 
   const timeStr = scheduledTime.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' });
-
-  let status;
-  if (log.taken) {
-    status = 'Taken';
-  } else if (isMissed) {
-    status = 'Missed';
-  } else if (now < scheduledTime) {
-    status = 'Upcoming';
-  } else {
-    status = 'Pending';
-  }
 
   return (
     <div className={`p-4 rounded-xl flex items-center gap-4 transition-all ${
       log.taken ? 'bg-brand-50 dark:bg-brand-900/30' : 
-      isMissed ? 'bg-danger-50 dark:bg-danger-500/10' : 
+      log.missed ? 'bg-danger-50 dark:bg-danger-500/10' : 
       'bg-white dark:bg-gray-700/50'
     }`}>
       <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-        log.taken ? 'bg-brand-500' : isMissed ? 'bg-danger-400' : 'bg-gray-200 dark:bg-gray-600'
+        log.taken ? 'bg-brand-500' : log.missed ? 'bg-danger-400' : 'bg-gray-200 dark:bg-gray-600'
       }`}>
         {log.taken ? <CheckCircle2 className="w-6 h-6 text-white" /> : 
-         isMissed ? <AlertTriangle className="w-6 h-6 text-white" /> :
+         log.missed ? <AlertTriangle className="w-6 h-6 text-white" /> :
          <Pill className="w-6 h-6 text-gray-500 dark:text-gray-300" />}
       </div>
 
@@ -326,7 +296,7 @@ function DoseLogItem({ log, onTake }) {
       <div className="flex-shrink-0">
         {log.taken ? (
           <span className="text-sm font-semibold text-brand-600 dark:text-brand-400">Done</span>
-        ) : isMissed ? (
+        ) : log.missed ? (
           <span className="text-sm font-semibold text-danger-500">Missed</span>
         ) : isTakeWindow ? (
           <button
